@@ -53,7 +53,8 @@ args = parser.parse_args()
 # ========== set input/output files ============
 dataset_name = args.dataset
 model_name = args.model
-input_file = '../hotel-8-12.npz'
+input_file = 'datasets/data_zara01/zara01-8-12.npz'
+# input_file = 'datasets/data_zara01/hotel-8-12.npz'
 model_file = '../trained_models/' + model_name + '-' + dataset_name + '.pt'
 
 # FIXME: ====== training hyper-parameters ======
