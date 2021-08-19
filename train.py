@@ -445,7 +445,7 @@ def predict(obsv_p, noise, n_next, sub_batches=[]):
 
 # =============== Training Loop ==================
 def train():
-    tic = time.clock()
+    tic = time.perf_counter()
     # Evaluation metrics (ADE/FDE)
     train_ADE, train_FDE = 0, 0
     batch_size_accum = 0;
@@ -563,7 +563,7 @@ def train():
 
     train_ADE /= n_train_samples
     train_FDE /= n_train_samples
-    toc = time.clock()
+    toc = time.perf_counter()
     print(" Epc=%4d, Train ADE,FDE = (%.3f, %.3f) | time = %.1f" \
           % (epoch, train_ADE, train_FDE, toc - tic))
 
