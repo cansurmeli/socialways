@@ -47,6 +47,10 @@ parser.add_argument('--dataset', '--data',
                     default='hotel',
                     choices=['hotel'],
                     help='pick a specific dataset (default: "hotel")')
+parser.add_argument('--cuda', '--c',
+                    default='0',
+                    choices=['0', '1'],
+                    help='pick a specific GPU to run on (default: 0)')
 args = parser.parse_args()
 
 
@@ -54,8 +58,7 @@ args = parser.parse_args()
 dataset_name = args.dataset
 model_name = args.model
 input_file = 'datasets/data_zara01/zara01-8-12.npz'
-# input_file = 'datasets/data_zara01/hotel-8-12.npz'
-model_file = '../trained_models/' + model_name + '-' + dataset_name + '.pt'
+model_file = 'trained_models/' + model_name + '-' + dataset_name + '.pt'
 
 # FIXME: ====== training hyper-parameters ======
 # Unrolled GAN
@@ -120,9 +123,13 @@ scale.calc_scale(keep_ratio=True)
 dataset_obsv = scale.normalize(dataset_obsv)
 dataset_pred = scale.normalize(dataset_pred)
 ss = scale.sx
+
+# Setup Cuda
+device = torch.device("cuda:" + args.cuda if torch.cuda.is_available() else "cpu")
+
 # Copy normalized observations/paths to predict into torch GPU tensors
-dataset_obsv = torch.FloatTensor(dataset_obsv).cuda()
-dataset_pred = torch.FloatTensor(dataset_pred).cuda()
+dataset_obsv = torch.FloatTensor(dataset_obsv).to(device)
+dataset_pred = torch.FloatTensor(dataset_pred).to(device)
 
 
 # ================================================
@@ -294,8 +301,8 @@ class Discriminator(nn.Module):
 
     def forward(self, obsv, pred):
         bs = obsv.size(0)
-        lstm_h_c = (torch.zeros(1, bs, self.lstm_dim).cuda(),
-                    torch.zeros(1, bs, self.lstm_dim).cuda())
+        lstm_h_c = (torch.zeros(1, bs, self.lstm_dim).to(device),
+                    torch.zeros(1, bs, self.lstm_dim).to(device))
         # Encoding of the observed sequence trhough an LSTM cell
         obsv_code, lstm_h_c = self.obsv_encoder_lstm(obsv, lstm_h_c)
         # Further encoding through a FC layer
@@ -368,12 +375,12 @@ class DecoderLstm(nn.Module):
 
 
 # LSTM-based path encoder
-encoder = EncoderLstm(hidden_size, n_lstm_layers).cuda()
-feature_embedder = EmbedSocialFeatures(num_social_features, social_feature_size).cuda()
-attention = AttentionPooling(hidden_size, social_feature_size).cuda()
+encoder = EncoderLstm(hidden_size, n_lstm_layers).to(device)
+feature_embedder = EmbedSocialFeatures(num_social_features, social_feature_size).to(device)
+attention = AttentionPooling(hidden_size, social_feature_size).to(device)
 
 # Decoder
-decoder = DecoderFC(hidden_size + social_feature_size + noise_len).cuda()
+decoder = DecoderFC(hidden_size + social_feature_size + noise_len).to(device)
 # decoder = DecoderLstm(social_feature_size + VEL_VEC_LEN + noise_len, traj_code_len).cuda()
 
 # The Generator parameters and their optimizer
@@ -382,7 +389,7 @@ predictor_params = chain(attention.parameters(), feature_embedder.parameters(),
 predictor_optimizer = opt.Adam(predictor_params, lr=lr_g, betas=(0.9, 0.999))
 
 # The Discriminator parameters and their optimizer
-D = Discriminator(n_next, hidden_size, n_latent_codes).cuda()
+D = Discriminator(n_next, hidden_size, n_latent_codes).to(device)
 D_optimizer = opt.Adam(D.parameters(), lr=lr_d, betas=(0.9, 0.999))
 mse_loss = nn.MSELoss()
 bce_loss = nn.BCELoss()
@@ -397,8 +404,8 @@ def predict(obsv_p, noise, n_next, sub_batches=[]):
     # This makes of obsv_4d a batch_sizexTx4 tensor
     obsv_4d = get_traj_4d(obsv_p, [])
     # Initial values for the hidden and cell states (zero)
-    lstm_h_c = (torch.zeros(n_lstm_layers, bs, encoder.hidden_size).cuda(),
-                torch.zeros(n_lstm_layers, bs, encoder.hidden_size).cuda())
+    lstm_h_c = (torch.zeros(n_lstm_layers, bs, encoder.hidden_size).to(device),
+                torch.zeros(n_lstm_layers, bs, encoder.hidden_size).to(device))
     encoder.init_lstm(lstm_h_c[0], lstm_h_c[1])
     # Apply the encoder to the observed sequence
     # obsv_4d: batch_sizexTx4 tensor
@@ -432,13 +439,9 @@ def predict(obsv_p, noise, n_next, sub_batches=[]):
 
     return torch.stack(pred_4ds, 1)
 
-
-# ===================================================
-
-
 # =============== Training Loop ==================
 def train():
-    tic = time.clock()
+    tic = time.perf_counter()
     # Evaluation metrics (ADE/FDE)
     train_ADE, train_FDE = 0, 0
     batch_size_accum = 0;
@@ -469,9 +472,9 @@ def train():
 
             # Completes the positional vectors with velocities (to have dimension 4)
             obsv_4d, pred_4d = get_traj_4d(obsv, pred)
-            zeros = Variable(torch.zeros(bs, 1) + np.random.uniform(0, 0.1), requires_grad=False).cuda()
-            ones = Variable(torch.ones(bs, 1) * np.random.uniform(0.9, 1.0), requires_grad=False).cuda()
-            noise = torch.FloatTensor(torch.rand(bs, noise_len)).cuda()
+            zeros = Variable(torch.zeros(bs, 1) + np.random.uniform(0, 0.1), requires_grad=False).to(device)
+            ones = Variable(torch.ones(bs, 1) * np.random.uniform(0.9, 1.0), requires_grad=False).to(device)
+            noise = torch.FloatTensor(torch.rand(bs, noise_len)).to(device)
 
             # ============== Train Discriminator ================
             for u in range(n_unrolling_steps + 1):
@@ -556,7 +559,7 @@ def train():
 
     train_ADE /= n_train_samples
     train_FDE /= n_train_samples
-    toc = time.clock()
+    toc = time.perf_counter()
     print(" Epc=%4d, Train ADE,FDE = (%.3f, %.3f) | time = %.1f" \
           % (epoch, train_ADE, train_FDE, toc - tic))
 
@@ -582,7 +585,7 @@ def test(n_gen_samples=20, linear=False, write_to_file=None, just_one=False):
                 all_20_errors.append(err_all.unsqueeze(0))
             else:
                 for kk in range(n_gen_samples):
-                    noise = torch.FloatTensor(torch.rand(bs, noise_len)).cuda()
+                    noise = torch.FloatTensor(torch.rand(bs, noise_len)).to(device)
                     pred_hat_4d = predict(obsv, noise, n_next)
                     all_20_preds.append(pred_hat_4d.unsqueeze(0))
                     err_all = torch.pow((pred_hat_4d[:, :, :2] - pred) / ss, 2).sum(dim=2, keepdim=True).sqrt()

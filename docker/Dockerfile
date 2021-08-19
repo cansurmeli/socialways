@@ -1,4 +1,6 @@
-FROM python:3.8-slim-buster
+FROM pytorch/pytorch:latest
+
+WORKDIR /home
 
 # Install the Python packages
 COPY requirements.txt .
