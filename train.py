@@ -126,6 +126,7 @@ ss = scale.sx
 
 # Setup Cuda
 device = torch.device("cuda:" + args.cuda if torch.cuda.is_available() else "cpu")
+print(f"Current Device: {device}")
 
 # Copy normalized observations/paths to predict into torch GPU tensors
 dataset_obsv = torch.FloatTensor(dataset_obsv).to(device)
