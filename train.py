@@ -43,7 +43,9 @@ parser.add_argument('--unrolling-steps', '--unroll',
 parser.add_argument('--hidden-size', '--h-size',
                     type=int, default=64, metavar='N',
                     help='size of network intermediate layer (default: 64)')
-parser.add_argument('--dataset', '--data',
+parser.add_argument('--dataset-location',
+										help='set the location inside `datasets` folder')
+parser.add_argument('--dataset-name', '--data',
                     default='hotel',
                     choices=['hotel'],
                     help='pick a specific dataset (default: "hotel")')
@@ -55,10 +57,10 @@ args = parser.parse_args()
 
 
 # ========== set input/output files ============
-dataset_name = args.dataset
-model_name = args.model
-input_file = 'datasets/data_zara01/zara01-8-12.npz'
-model_file = 'trained_models/' + model_name + '-' + dataset_name + '.pt'
+dataset_location = args.dataset-location
+dataset_name = args.dataset-name
+input_file = "datasets/" + dataset_location + '/' + dataset_name + ".npz"
+model_file = "trained_models/" + dataset_name + ".pt"
 
 # FIXME: ====== training hyper-parameters ======
 # Unrolled GAN
