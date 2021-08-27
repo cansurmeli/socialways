@@ -45,9 +45,7 @@ parser.add_argument('--hidden-size', '--h-size',
                     help='size of network intermediate layer (default: 64)')
 parser.add_argument('--dataset-location',
 										help='set the location inside `datasets` folder')
-parser.add_argument('--dataset-name', '--data',
-                    default='hotel',
-                    choices=['hotel'],
+parser.add_argument('--dataset-name',
                     help='pick a specific dataset (default: "hotel")')
 parser.add_argument('--cuda', '--c',
                     default='0',
@@ -55,12 +53,12 @@ parser.add_argument('--cuda', '--c',
                     help='pick a specific GPU to run on (default: 0)')
 args = parser.parse_args()
 
-
 # ========== set input/output files ============
-dataset_location = args.dataset-location
-dataset_name = args.dataset-name
-input_file = "datasets/" + dataset_location + '/' + dataset_name + ".npz"
-model_file = "trained_models/" + dataset_name + ".pt"
+model_name = args.model
+dataset_location = args.dataset_location
+dataset_name = args.dataset_name
+input_file = 'datasets/' + dataset_location + '/' + dataset_name + '.npz'
+model_file = 'trained_models/' + dataset_name + '.pt'
 
 # FIXME: ====== training hyper-parameters ======
 # Unrolled GAN
@@ -670,6 +668,6 @@ for epoch in trange(start_epoch, n_epochs + 1):  # FIXME : set the number of epo
         }, model_file)
 
     if epoch % 5 == 0:
-        wr_dir = '../medium/' + dataset_name + '/' + model_name + '/' + str(epoch)
+        wr_dir = 'medium/' + dataset_name + '/' + model_name + '/' + str(epoch)
         os.makedirs(wr_dir, exist_ok=True)
         test(128, write_to_file=wr_dir, just_one=True)
